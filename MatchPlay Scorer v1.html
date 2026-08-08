@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a2744">
+<title>Match Play Scorer</title>
+<style>
+  :root{
+    --teal:#007B7F; --navy:#1a2744; --gold:#C9A84C;
+    --page:#EEF0F4; --card:#ffffff; --text:#1a2744; --muted:#6B7280;
+    --win:#1D9E75; --loss:#E24B4A; --line:#E3E6EC;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--page); color:var(--text);
+    font-size:16px; line-height:1.4;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+
+  /* ---------- Setup screen ---------- */
+  #setup{padding:20px 16px 40px;}
+  .brandbar{display:flex; align-items:center; gap:10px; margin-bottom:18px;}
+  .brandbar .dot{width:10px; height:10px; border-radius:50%; background:var(--teal);}
+  .brandbar span{font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600;}
+  h1{font-size:26px; margin:0 0 4px; font-weight:600;}
+  .sub{color:var(--muted); margin:0 0 22px; font-size:15px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600;}
+  input[type=text], input[type=number]{
+    width:100%; padding:14px; font-size:17px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--text);
+  }
+  input:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,123,127,.15);}
+  .row2{display:flex; gap:12px;}
+  .row2 .field{flex:1;}
+  .seg{display:flex; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:16px;}
+  .seg button{flex:1; padding:12px; border:none; background:#fff; font-size:15px; font-weight:600; color:var(--muted);}
+  .seg button.on{background:var(--teal); color:#fff;}
+
+  .si-toggle{display:flex; justify-content:space-between; align-items:center; padding:14px; background:#fff; border:1px solid var(--line); border-radius:10px; margin-bottom:12px; font-size:15px; font-weight:600;}
+  .si-toggle .chev{color:var(--muted); font-size:13px; font-weight:600;}
+  #siGrid{display:none; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px;}
+  #siGrid.open{display:grid;}
+  .si-cell{background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 6px; text-align:center;}
+  .si-cell .h{font-size:11px; color:var(--muted); font-weight:600; margin-bottom:2px;}
+  .si-cell input{width:100%; text-align:center; border:none; font-size:16px; padding:4px 0; font-weight:600;}
+  .si-cell input:focus{box-shadow:none;}
+  .strokehint{background:#FBF5E6; border:1px solid #EBD9A8; color:#8a6d1f; border-radius:10px; padding:12px 14px; font-size:14px; margin-bottom:16px; display:none;}
+  .strokehint.show{display:block;}
+  .btn-primary{width:100%; padding:17px; font-size:18px; font-weight:600; background:var(--teal); color:#fff; border:none; border-radius:12px;}
+  .btn-primary:active{background:#006165;}
+
+  /* ---------- Play screen ---------- */
+  #play{display:none; flex-direction:column; flex:1;}
+  .statusbar{background:var(--navy); color:#fff; padding:22px 16px 20px; text-align:center; position:sticky; top:0; z-index:5;}
+  .status-main{font-size:38px; font-weight:700; letter-spacing:.01em; line-height:1;}
+  .status-sub{font-size:14px; color:#9fb0c9; margin-top:8px;}
+  .status-sub b{color:#fff;}
+  .players{display:flex; justify-content:center; gap:18px; margin-top:12px; font-size:13px; color:#9fb0c9;}
+  .players b{color:#fff; font-weight:600;}
+
+  .holecard{background:var(--card); margin:12px; border-radius:16px; padding:20px 16px; box-shadow:0 2px 10px rgba(26,39,68,.06);}
+  .hole-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;}
+  .hole-num{font-size:22px; font-weight:600;}
+  .hole-thru{font-size:13px; color:var(--muted);}
+  .stroke-badge{display:inline-block; background:#FBF5E6; color:#8a6d1f; border:1px solid #EBD9A8; padding:5px 10px; border-radius:8px; font-size:13px; font-weight:600; margin-top:8px;}
+  .stroke-badge.none{background:#F3F4F6; color:var(--muted); border-color:var(--line);}
+
+  .whowon{font-size:13px; color:var(--muted); font-weight:600; margin:20px 0 10px; text-align:center; text-transform:uppercase; letter-spacing:.05em;}
+  .winbtns{display:flex; flex-direction:column; gap:10px;}
+  .winbtns button{padding:18px; font-size:18px; font-weight:600; border:2px solid var(--line); border-radius:12px; background:#fff; color:var(--text); text-align:center;}
+  .winbtns button.pA{border-color:var(--teal); color:var(--teal);}
+  .winbtns button.pA:active{background:var(--teal); color:#fff;}
+  .winbtns button.pB{border-color:var(--navy); color:var(--navy);}
+  .winbtns button.pB:active{background:var(--navy); color:#fff;}
+  .winbtns button.halve{border-color:var(--muted); color:var(--muted);}
+  .winbtns button.halve:active{background:var(--muted); color:#fff;}
+
+  .strip{display:flex; flex-wrap:wrap; gap:6px; padding:4px 16px 12px;}
+  .chip{width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; background:#fff; border:1px solid var(--line); color:var(--muted);}
+  .chip.A{background:var(--teal); color:#fff; border-color:var(--teal);}
+  .chip.B{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .chip.H{background:#E5E7EB; color:#4b5563;}
+  .chip.cur{outline:3px solid var(--gold); outline-offset:1px;}
+
+  .actions{padding:4px 16px 24px; margin-top:auto;}
+  .actions button{width:100%; padding:14px; font-size:15px; font-weight:600; border-radius:10px; margin-bottom:10px;}
+  .btn-undo{background:#fff; border:1px solid var(--line); color:var(--text);}
+  .btn-reset{background:#fff; border:1px solid var(--loss); color:var(--loss);}
+
+  /* ---------- Result overlay ---------- */
+  #result{display:none; position:fixed; inset:0; background:rgba(26,39,68,.96); color:#fff; z-index:20; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;}
+  #result .trophy{font-size:15px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:14px;}
+  #result .winner{font-size:30px; font-weight:700; margin-bottom:6px;}
+  #result .score{font-size:52px; font-weight:700; color:var(--teal); margin:8px 0 30px;}
+  #result button{padding:16px 30px; font-size:17px; font-weight:600; border:none; border-radius:12px; background:var(--teal); color:#fff; margin:6px;}
+  #result .secondary{background:transparent; border:1px solid rgba(255,255,255,.4); color:#fff;}
+  .dormie{background:var(--gold); color:var(--navy); text-align:center; padding:10px; font-weight:700; font-size:15px; letter-spacing:.03em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- SETUP -->
+  <div id="setup">
+    <div class="brandbar"><span class="dot"></span><span>Match Play Scorer</span></div>
+    <h1>New match</h1>
+    <p class="sub">Enter the players and it handles the strokes and the running score for you.</p>
+
+    <div class="row2">
+      <div class="field"><label>Player A</label><input type="text" id="nameA" placeholder="You" value="Player A"></div>
+      <div class="field"><label>Player B</label><input type="text" id="nameB" placeholder="Opponent" value="Player B"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Handicap A</label><input type="number" id="hcpA" inputmode="numeric" placeholder="0"></div>
+      <div class="field"><label>Handicap B</label><input type="number" id="hcpB" inputmode="numeric" placeholder="0"></div>
+    </div>
+
+    <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600;">Holes</label>
+    <div class="seg" id="holesSeg">
+      <button data-h="18" class="on">18 holes</button>
+      <button data-h="9">Front 9</button>
+      <button data-h="9b">Back 9</button>
+    </div>
+
+    <div class="strokehint" id="strokehint"></div>
+
+    <div class="si-toggle" id="siToggle">
+      <span>Stroke index per hole</span>
+      <span class="chev" id="siChev">Tap to edit ▾</span>
+    </div>
+    <div id="siGrid"></div>
+
+    <button class="btn-primary" onclick="startMatch()">Start match</button>
+  </div>
+
+  <!-- PLAY -->
+  <div id="play">
+    <div class="statusbar">
+      <div class="status-main" id="statusMain">All Square</div>
+      <div class="status-sub" id="statusSub"></div>
+      <div class="players"><span><b id="pAName">Player A</b> <span id="pAhcp"></span></span><span><b id="pBName">Player B</b> <span id="pBhcp"></span></span></div>
+    </div>
+    <div class="dormie" id="dormieBar" style="display:none;"></div>
+
+    <div class="holecard">
+      <div class="hole-head">
+        <span class="hole-num" id="holeNum">Hole 1</span>
+        <span class="hole-thru" id="holeThru"></span>
+      </div>
+      <div id="strokeBadge" class="stroke-badge none">No strokes on this hole</div>
+
+      <div class="whowon">Who won the hole?</div>
+      <div class="winbtns">
+        <button class="pA" id="btnA" onclick="scoreHole('A')">Player A</button>
+        <button class="halve" onclick="scoreHole('H')">Halved</button>
+        <button class="pB" id="btnB" onclick="scoreHole('B')">Player B</button>
+      </div>
+    </div>
+
+    <div class="strip" id="strip"></div>
+
+    <div class="actions">
+      <button class="btn-undo" onclick="undo()">↩ Undo last hole</button>
+      <button class="btn-reset" onclick="resetMatch()">New match</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result">
+    <div class="trophy">Match complete</div>
+    <div class="winner" id="resWinner"></div>
+    <div class="score" id="resScore"></div>
+    <button onclick="shareResult()">Share result</button>
+    <button class="secondary" onclick="resetMatch()">New match</button>
+  </div>
+
+</div>
+
+<script>
+  var S = null; // state
+
+  // ---- Setup interactions ----
+  var chosenHoles = {count:18, mode:'18'};
+  document.querySelectorAll('#holesSeg button').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('#holesSeg button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      var v=b.getAttribute('data-h');
+      chosenHoles = v==='18'?{count:18,mode:'18'} : v==='9'?{count:9,mode:'front'} : {count:9,mode:'back'};
+      buildSIGrid();
+    };
+  });
+
+  document.getElementById('siToggle').onclick=function(){
+    var g=document.getElementById('siGrid');
+    g.classList.toggle('open');
+    document.getElementById('siChev').textContent = g.classList.contains('open')?'Done ▴':'Tap to edit ▾';
+  };
+
+  ['hcpA','hcpB'].forEach(function(id){ document.getElementById(id).oninput=updateStrokeHint; });
+
+  function holeNumbers(){
+    if(chosenHoles.mode==='back') return [10,11,12,13,14,15,16,17,18];
+    if(chosenHoles.mode==='front') return [1,2,3,4,5,6,7,8,9];
+    var a=[]; for(var i=1;i<=18;i++)a.push(i); return a;
+  }
+
+  function buildSIGrid(){
+    var g=document.getElementById('siGrid'); g.innerHTML='';
+    holeNumbers().forEach(function(h){
+      var cell=document.createElement('div'); cell.className='si-cell';
+      cell.innerHTML='<div class="h">Hole '+h+'</div><input type="number" inputmode="numeric" id="si_'+h+'" value="'+h+'">';
+      g.appendChild(cell);
+    });
+    updateStrokeHint();
+  }
+
+  function updateStrokeHint(){
+    var a=parseFloat(document.getElementById('hcpA').value);
+    var b=parseFloat(document.getElementById('hcpB').value);
+    var hint=document.getElementById('strokehint');
+    if(isNaN(a)||isNaN(b)){ hint.classList.remove('show'); return; }
+    var diff=Math.round(Math.abs(a-b));
+    if(diff===0){ hint.textContent='Level match — no strokes given.'; }
+    else{
+      var lower = a<b ? (document.getElementById('nameA').value||'Player A') : (document.getElementById('nameB').value||'Player B');
+      var higher = a<b ? (document.getElementById('nameB').value||'Player B') : (document.getElementById('nameA').value||'Player A');
+      hint.textContent = higher+' gets '+diff+' stroke'+(diff>1?'s':'')+' (off '+lower+'), on the '+diff+' hardest holes by stroke index.';
+    }
+    hint.classList.add('show');
+  }
+
+  buildSIGrid();
+
+  // ---- Start ----
+  function startMatch(){
+    var holes=holeNumbers();
+    var si={};
+    holes.forEach(function(h){ var v=parseInt(document.getElementById('si_'+h).value); si[h]=isNaN(v)?h:v; });
+    var a=parseFloat(document.getElementById('hcpA').value); if(isNaN(a))a=0;
+    var b=parseFloat(document.getElementById('hcpB').value); if(isNaN(b))b=0;
+    var diff=Math.round(Math.abs(a-b));
+    var receiver = a<b ? 'B' : (b<a ? 'A' : null); // higher handicap receives
+
+    // which SI ranks receive a stroke (1..diff, wrapping past 18)
+    var strokeRanks={};
+    for(var k=1;k<=diff;k++){ var rank=((k-1)%18)+1; strokeRanks[rank]=(strokeRanks[rank]||0)+1; }
+
+    // map each hole to strokes received by the receiver
+    var holeStrokes={};
+    holes.forEach(function(h){ holeStrokes[h]=receiver?(strokeRanks[si[h]]||0):0; });
+
+    S={
+      nameA:document.getElementById('nameA').value||'Player A',
+      nameB:document.getElementById('nameB').value||'Player B',
+      hcpA:a, hcpB:b, holes:holes, si:si,
+      receiver:receiver, holeStrokes:holeStrokes,
+      results:[]  // 'A','B','H' per hole played
+    };
+    save(); showPlay();
+  }
+
+  function showPlay(){
+    document.getElementById('setup').style.display='none';
+    document.getElementById('play').style.display='flex';
+    document.getElementById('pAName').textContent=S.nameA;
+    document.getElementById('pBName').textContent=S.nameB;
+    document.getElementById('pAhcp').textContent=S.hcpA?('('+S.hcpA+')'):'';
+    document.getElementById('pBhcp').textContent=S.hcpB?('('+S.hcpB+')'):'';
+    document.getElementById('btnA').textContent=S.nameA;
+    document.getElementById('btnB').textContent=S.nameB;
+    render();
+  }
+
+  // ---- Scoring ----
+  function scoreHole(r){
+    if(matchIsOver()) return;
+    S.results.push(r); save(); render();
+    var res=matchStatus();
+    if(res.over) showResult(res);
+  }
+  function undo(){ if(S.results.length){ S.results.pop(); save(); render(); document.getElementById('result').style.display='none'; } }
+
+  function tally(){
+    var A=0,B=0; S.results.forEach(function(r){ if(r==='A')A++; else if(r==='B')B++; });
+    return {A:A,B:B,lead:A-B};
+  }
+  function matchStatus(){
+    var t=tally(); var played=S.results.length; var remaining=S.holes.length-played;
+    var lead=Math.abs(t.lead);
+    var over = lead>remaining || (remaining===0);
+    var dormie = !over && remaining>0 && lead===remaining;
+    return {A:t.A,B:t.B,lead:t.lead,played:played,remaining:remaining,over:over,dormie:dormie};
+  }
+  function matchIsOver(){ return matchStatus().over; }
+
+  function statusText(lead){
+    if(lead===0) return 'All Square';
+    return Math.abs(lead)+' UP';
+  }
+
+  function render(){
+    var st=matchStatus();
+    var main=document.getElementById('statusMain');
+    var sub=document.getElementById('statusSub');
+    if(st.lead===0){ main.textContent='All Square'; }
+    else { var leader = st.lead>0?S.nameA:S.nameB; main.textContent=Math.abs(st.lead)+' UP'; sub.innerHTML='<b>'+leader+'</b> leads'; }
+    if(st.lead===0) sub.innerHTML = st.played? 'through '+st.played : 'ready to start';
+    else sub.innerHTML += ' &middot; through '+st.played;
+
+    // dormie bar
+    var db=document.getElementById('dormieBar');
+    if(st.dormie){ var ldr=st.lead>0?S.nameA:S.nameB; db.style.display='block'; db.textContent='DORMIE — '+ldr+' '+Math.abs(st.lead)+' up with '+st.remaining+' to play'; }
+    else db.style.display='none';
+
+    // current hole
+    var idx=st.played; // next hole index
+    if(idx>=S.holes.length){ renderStrip(idx); return; }
+    var h=S.holes[idx];
+    document.getElementById('holeNum').textContent='Hole '+h;
+    document.getElementById('holeThru').textContent=(idx+1)+' of '+S.holes.length;
+
+    var sb=document.getElementById('strokeBadge');
+    var strokes=S.holeStrokes[h]||0;
+    if(strokes>0){
+      var who = S.receiver==='A'?S.nameA:S.nameB;
+      sb.className='stroke-badge';
+      sb.textContent='★ '+who+' gets '+(strokes>1?strokes+' strokes':'a stroke')+' here (SI '+S.si[h]+')';
+    } else { sb.className='stroke-badge none'; sb.textContent='No strokes on this hole (SI '+S.si[h]+')'; }
+
+    renderStrip(idx);
+  }
+
+  function renderStrip(curIdx){
+    var strip=document.getElementById('strip'); strip.innerHTML='';
+    S.holes.forEach(function(h,i){
+      var c=document.createElement('div'); c.className='chip';
+      var r=S.results[i];
+      if(r==='A'){c.classList.add('A'); c.textContent=h;}
+      else if(r==='B'){c.classList.add('B'); c.textContent=h;}
+      else if(r==='H'){c.classList.add('H'); c.textContent=h;}
+      else { c.textContent=h; }
+      if(i===curIdx && curIdx<S.holes.length) c.classList.add('cur');
+      strip.appendChild(c);
+    });
+  }
+
+  function showResult(st){
+    var r=document.getElementById('result');
+    var lead=Math.abs(st.lead);
+    var winner = st.lead>0?S.nameA : (st.lead<0?S.nameB:null);
+    if(winner===null){
+      document.getElementById('resWinner').textContent='Match halved';
+      document.getElementById('resScore').textContent='A/S';
+    } else {
+      document.getElementById('resWinner').textContent=winner+' wins';
+      if(st.remaining>0) document.getElementById('resScore').textContent=lead+' & '+st.remaining;
+      else document.getElementById('resScore').textContent=lead+' up';
+    }
+    r.style.display='flex';
+  }
+
+  function shareResult(){
+    var st=matchStatus(); var lead=Math.abs(st.lead);
+    var winner = st.lead>0?S.nameA : (st.lead<0?S.nameB:null);
+    var score = winner? (st.remaining>0? lead+' & '+st.remaining : lead+' up') : 'A/S (halved)';
+    var text = winner ? (winner+' beat '+(winner===S.nameA?S.nameB:S.nameA)+' '+score) : ('Match halved between '+S.nameA+' and '+S.nameB);
+    if(navigator.share){ navigator.share({title:'Match result', text:text}).catch(function(){}); }
+    else { alert(text); }
+  }
+
+  function resetMatch(){
+    localStorage.removeItem('mp_state');
+    S=null;
+    document.getElementById('result').style.display='none';
+    document.getElementById('play').style.display='none';
+    document.getElementById('setup').style.display='block';
+  }
+
+  // ---- Persistence ----
+  function save(){ try{ localStorage.setItem('mp_state', JSON.stringify(S)); }catch(e){} }
+  function load(){
+    try{ var raw=localStorage.getItem('mp_state'); if(raw){ S=JSON.parse(raw); showPlay();
+      var st=matchStatus(); if(st.over) showResult(st); } }catch(e){}
+  }
+  load();
+</script>
+</body>
+</html>
