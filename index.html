@@ -6,12 +6,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a2744">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
 <title>Match Play Scorer</title>
 <style>
   :root{
     --teal:#007B7F; --navy:#1a2744; --gold:#C9A84C;
     --page:#EEF0F4; --card:#ffffff; --text:#1a2744; --muted:#6B7280;
     --win:#1D9E75; --loss:#E24B4A; --line:#E3E6EC;
+    --me:#1E9E63; --meLight:#4BD79E; --opp:#E24B4A; --oppLight:#FF8280;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0; padding:0;}
@@ -32,6 +35,7 @@
   .sub{color:var(--muted); margin:0 0 22px; font-size:15px;}
   .field{margin-bottom:16px;}
   .field label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600;}
+  .seclabel{display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600;}
   input[type=text], input[type=number]{
     width:100%; padding:14px; font-size:17px; border:1px solid var(--line);
     border-radius:10px; background:#fff; color:var(--text);
@@ -39,8 +43,10 @@
   input:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,123,127,.15);}
   .row2{display:flex; gap:12px;}
   .row2 .field{flex:1;}
+  .row3{display:flex; gap:8px;}
+  .row3 .field{flex:1;}
   .seg{display:flex; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:16px;}
-  .seg button{flex:1; padding:12px; border:none; background:#fff; font-size:15px; font-weight:600; color:var(--muted);}
+  .seg button{flex:1; padding:12px 6px; border:none; background:#fff; font-size:15px; font-weight:600; color:var(--muted);}
   .seg button.on{background:var(--teal); color:#fff;}
 
   .si-toggle{display:flex; justify-content:space-between; align-items:center; padding:14px; background:#fff; border:1px solid var(--line); border-radius:10px; margin-bottom:12px; font-size:15px; font-weight:600;}
@@ -50,7 +56,11 @@
   .si-cell{background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 6px; text-align:center;}
   .si-cell .h{font-size:11px; color:var(--muted); font-weight:600; margin-bottom:2px;}
   .si-cell input{width:100%; text-align:center; border:none; font-size:16px; padding:4px 0; font-weight:600;}
-  .si-cell input:focus{box-shadow:none;}
+  .si-cell input:focus{box-shadow:none; background:#EAF7F7; border-radius:6px;}
+  .si-cell input.bad{background:#FDECEC; color:#B42318;}
+  .si-status{font-size:13px; font-weight:600; margin:-6px 0 16px; display:none;}
+  .si-status.warn{display:block; color:#B42318;}
+  .si-status.ok{display:block; color:#1E9E63;}
   .strokehint{background:#FBF5E6; border:1px solid #EBD9A8; color:#8a6d1f; border-radius:10px; padding:12px 14px; font-size:14px; margin-bottom:16px; display:none;}
   .strokehint.show{display:block;}
   .btn-primary{width:100%; padding:17px; font-size:18px; font-weight:600; background:var(--teal); color:#fff; border:none; border-radius:12px;}
@@ -69,23 +79,23 @@
   .hole-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;}
   .hole-num{font-size:22px; font-weight:600;}
   .hole-thru{font-size:13px; color:var(--muted);}
-  .stroke-badge{display:inline-block; background:#FBF5E6; color:#8a6d1f; border:1px solid #EBD9A8; padding:5px 10px; border-radius:8px; font-size:13px; font-weight:600; margin-top:8px;}
-  .stroke-badge.none{background:#F3F4F6; color:var(--muted); border-color:var(--line);}
+  .stroke-badge{display:block; background:#FBF5E6; color:#8a6d1f; border:1px solid #EBD9A8; padding:11px 14px; border-radius:10px; font-size:17px; font-weight:700; margin-top:10px; text-align:center;}
+  .stroke-badge.none{background:#F3F4F6; color:var(--muted); border-color:var(--line); font-weight:600;}
 
-  .whowon{font-size:13px; color:var(--muted); font-weight:600; margin:20px 0 10px; text-align:center; text-transform:uppercase; letter-spacing:.05em;}
-  .winbtns{display:flex; flex-direction:column; gap:10px;}
-  .winbtns button{padding:18px; font-size:18px; font-weight:600; border:2px solid var(--line); border-radius:12px; background:#fff; color:var(--text); text-align:center;}
-  .winbtns button.pA{border-color:var(--teal); color:var(--teal);}
-  .winbtns button.pA:active{background:var(--teal); color:#fff;}
-  .winbtns button.pB{border-color:var(--navy); color:var(--navy);}
-  .winbtns button.pB:active{background:var(--navy); color:#fff;}
-  .winbtns button.halve{border-color:var(--muted); color:var(--muted);}
+  .whowon{font-size:13px; color:var(--muted); font-weight:600; margin:22px 0 12px; text-align:center; text-transform:uppercase; letter-spacing:.05em;}
+  .winbtns{display:flex; flex-direction:column; gap:12px;}
+  .winbtns button{padding:22px; font-size:21px; font-weight:800; border:3px solid var(--line); border-radius:14px; background:#fff; color:var(--text); text-align:center; letter-spacing:.01em;}
+  .winbtns button.pA{border-color:var(--me); color:var(--me);}
+  .winbtns button.pA:active{background:var(--me); color:#fff;}
+  .winbtns button.pB{border-color:var(--opp); color:var(--opp);}
+  .winbtns button.pB:active{background:var(--opp); color:#fff;}
+  .winbtns button.halve{border-color:var(--muted); color:var(--muted); font-size:19px; padding:18px;}
   .winbtns button.halve:active{background:var(--muted); color:#fff;}
 
   .strip{display:flex; flex-wrap:wrap; gap:6px; padding:4px 16px 12px;}
   .chip{width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; background:#fff; border:1px solid var(--line); color:var(--muted);}
-  .chip.A{background:var(--teal); color:#fff; border-color:var(--teal);}
-  .chip.B{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .chip.A{background:var(--me); color:#fff; border-color:var(--me);}
+  .chip.B{background:var(--opp); color:#fff; border-color:var(--opp);}
   .chip.H{background:#E5E7EB; color:#4b5563;}
   .chip.cur{outline:3px solid var(--gold); outline-offset:1px;}
 
@@ -102,6 +112,12 @@
   #result button{padding:16px 30px; font-size:17px; font-weight:600; border:none; border-radius:12px; background:var(--teal); color:#fff; margin:6px;}
   #result .secondary{background:transparent; border:1px solid rgba(255,255,255,.4); color:#fff;}
   .dormie{background:var(--gold); color:var(--navy); text-align:center; padding:10px; font-weight:700; font-size:15px; letter-spacing:.03em;}
+
+  .apphead{display:flex; flex-direction:column; align-items:center; margin:4px 0 12px;}
+  .applogo{width:80px; height:80px; margin-bottom:10px; border-radius:18px; filter:drop-shadow(0 5px 12px rgba(26,39,68,.20));}
+  .appname{font-size:22px; font-weight:700; color:var(--navy); letter-spacing:.01em;}
+  .reslogo{width:66px; height:66px; margin-bottom:18px; border-radius:15px; filter:drop-shadow(0 5px 14px rgba(0,0,0,.35));}
+  .statuslogo{width:26px; height:26px; margin:0 auto 8px; display:block; border-radius:6px; opacity:.97;}
 </style>
 </head>
 <body>
@@ -109,20 +125,58 @@
 
   <!-- SETUP -->
   <div id="setup">
-    <div class="brandbar"><span class="dot"></span><span>Match Play Scorer</span></div>
-    <h1>New match</h1>
-    <p class="sub">Enter the players and it handles the strokes and the running score for you.</p>
-
-    <div class="row2">
-      <div class="field"><label>Player A</label><input type="text" id="nameA" placeholder="You" value="Player A"></div>
-      <div class="field"><label>Player B</label><input type="text" id="nameB" placeholder="Opponent" value="Player B"></div>
+    <div class="apphead">
+      <img class="applogo" src="apple-touch-icon.png" alt="Match Play Scorer logo">
+      <div class="appname">Match Play Scorer</div>
     </div>
-    <div class="row2">
-      <div class="field"><label>Handicap A</label><input type="number" id="hcpA" inputmode="numeric" placeholder="0"></div>
-      <div class="field"><label>Handicap B</label><input type="number" id="hcpB" inputmode="numeric" placeholder="0"></div>
+    <p class="sub" style="text-align:center;">Shots and running score handled — just tap who won each hole.</p>
+
+    <span class="seclabel">Format</span>
+    <div class="seg" id="fmtSeg">
+      <button data-f="singles" class="on">Singles</button>
+      <button data-f="fourball">Fourball</button>
     </div>
 
-    <label style="display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600;">Holes</label>
+    <span class="seclabel">Course</span>
+    <div class="seg" id="courseSeg">
+      <button data-c="shaw" class="on">Shaw Hill</button>
+      <button data-c="custom">Custom</button>
+    </div>
+
+    <div class="field">
+      <label>Handicap allowance (%)</label>
+      <input type="number" id="allowance" inputmode="numeric" pattern="[0-9]*" value="100">
+      <div class="allowhint" id="allowHint" style="font-size:12px; color:var(--muted); margin-top:6px;">Singles normally uses 100% (full difference).</div>
+    </div>
+
+    <!-- Singles inputs -->
+    <div id="singlesBlock">
+      <div class="row2">
+        <div class="field"><label>You</label><input type="text" id="nameA" placeholder="You" value="Me"></div>
+        <div class="field"><label>Opponent</label><input type="text" id="nameB" placeholder="Opponent" value="Opponent"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Your handicap</label><input type="number" id="hcpA" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label>Their handicap</label><input type="number" id="hcpB" inputmode="decimal" placeholder="0"></div>
+      </div>
+    </div>
+
+    <!-- Fourball inputs -->
+    <div id="fourballBlock" style="display:none;">
+      <div class="row2">
+        <div class="field"><label>Your side</label><input type="text" id="fbUs" placeholder="Us" value="Us"></div>
+        <div class="field"><label>Their side</label><input type="text" id="fbThem" placeholder="Them" value="Them"></div>
+      </div>
+      <div class="field"><label>Your handicap</label><input type="number" id="fbMyHcp" inputmode="decimal" placeholder="0"></div>
+      <span class="seclabel">Other three handicaps (to find the lowest)</span>
+      <div class="row3">
+        <div class="field"><input type="number" id="other0" inputmode="decimal" placeholder="Partner"></div>
+        <div class="field"><input type="number" id="other1" inputmode="decimal" placeholder="Opp 1"></div>
+        <div class="field"><input type="number" id="other2" inputmode="decimal" placeholder="Opp 2"></div>
+      </div>
+    </div>
+
+    <span class="seclabel">Holes</span>
     <div class="seg" id="holesSeg">
       <button data-h="18" class="on">18 holes</button>
       <button data-h="9">Front 9</button>
@@ -132,10 +186,11 @@
     <div class="strokehint" id="strokehint"></div>
 
     <div class="si-toggle" id="siToggle">
-      <span>Stroke index per hole</span>
-      <span class="chev" id="siChev">Tap to edit ▾</span>
+      <span id="siToggleLabel">Stroke index (Shaw Hill)</span>
+      <span class="chev" id="siChev">Tap to view ▾</span>
     </div>
     <div id="siGrid"></div>
+    <div class="si-status" id="siStatus"></div>
 
     <button class="btn-primary" onclick="startMatch()">Start match</button>
   </div>
@@ -143,9 +198,10 @@
   <!-- PLAY -->
   <div id="play">
     <div class="statusbar">
+      <img class="statuslogo" src="apple-touch-icon.png" alt="">
       <div class="status-main" id="statusMain">All Square</div>
       <div class="status-sub" id="statusSub"></div>
-      <div class="players"><span><b id="pAName">Player A</b> <span id="pAhcp"></span></span><span><b id="pBName">Player B</b> <span id="pBhcp"></span></span></div>
+      <div class="players"><span><b id="pAName">Me</b> <span id="pAhcp"></span></span><span><b id="pBName">Opponent</b> <span id="pBhcp"></span></span></div>
     </div>
     <div class="dormie" id="dormieBar" style="display:none;"></div>
 
@@ -158,9 +214,9 @@
 
       <div class="whowon">Who won the hole?</div>
       <div class="winbtns">
-        <button class="pA" id="btnA" onclick="scoreHole('A')">Player A</button>
+        <button class="pA" id="btnA" onclick="scoreHole('A')">Me</button>
         <button class="halve" onclick="scoreHole('H')">Halved</button>
-        <button class="pB" id="btnB" onclick="scoreHole('B')">Player B</button>
+        <button class="pB" id="btnB" onclick="scoreHole('B')">Opponent</button>
       </div>
     </div>
 
@@ -174,6 +230,7 @@
 
   <!-- RESULT -->
   <div id="result">
+    <img class="reslogo" src="apple-touch-icon.png" alt="">
     <div class="trophy">Match complete</div>
     <div class="winner" id="resWinner"></div>
     <div class="score" id="resScore"></div>
@@ -184,16 +241,40 @@
 </div>
 
 <script>
-  var S = null; // state
+  // Shaw Hill Golf Club — stroke index by hole (white tees)
+  var SHAW = {1:15,2:7,3:3,4:9,5:11,6:17,7:13,8:1,9:5,10:18,11:2,12:14,13:8,14:10,15:4,16:16,17:12,18:6};
 
-  // ---- Setup interactions ----
-  var chosenHoles = {count:18, mode:'18'};
+  var S = null;
+  var fmt = 'singles';       // 'singles' | 'fourball'
+  var courseMode = 'shaw';   // 'shaw' | 'custom'
+  var holesMode = '18';      // '18' | 'front' | 'back'
+
+  // ---- Segmented controls ----
+  document.querySelectorAll('#fmtSeg button').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('#fmtSeg button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); fmt=b.getAttribute('data-f');
+      document.getElementById('singlesBlock').style.display = fmt==='singles'?'block':'none';
+      document.getElementById('fourballBlock').style.display = fmt==='fourball'?'block':'none';
+      document.getElementById('allowance').value = fmt==='fourball'?90:100;
+      document.getElementById('allowHint').textContent = fmt==='fourball'?'Fourball normally uses 90% of each handicap.':'Singles normally uses 100% (full difference).';
+      updateStrokeHint();
+    };
+  });
+  document.querySelectorAll('#courseSeg button').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('#courseSeg button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); courseMode=b.getAttribute('data-c');
+      document.getElementById('siToggleLabel').textContent = courseMode==='shaw'?'Stroke index (Shaw Hill)':'Stroke index (custom)';
+      buildSIGrid();
+    };
+  });
   document.querySelectorAll('#holesSeg button').forEach(function(b){
     b.onclick=function(){
       document.querySelectorAll('#holesSeg button').forEach(x=>x.classList.remove('on'));
       b.classList.add('on');
       var v=b.getAttribute('data-h');
-      chosenHoles = v==='18'?{count:18,mode:'18'} : v==='9'?{count:9,mode:'front'} : {count:9,mode:'back'};
+      holesMode = v==='18'?'18' : v==='9'?'front' : 'back';
       buildSIGrid();
     };
   });
@@ -201,40 +282,128 @@
   document.getElementById('siToggle').onclick=function(){
     var g=document.getElementById('siGrid');
     g.classList.toggle('open');
-    document.getElementById('siChev').textContent = g.classList.contains('open')?'Done ▴':'Tap to edit ▾';
+    document.getElementById('siChev').textContent = g.classList.contains('open')?'Done ▴':'Tap to view ▾';
   };
 
-  ['hcpA','hcpB'].forEach(function(id){ document.getElementById(id).oninput=updateStrokeHint; });
+  ['hcpA','hcpB','fbMyHcp','other0','other1','other2','allowance'].forEach(function(id){
+    document.getElementById(id).oninput=updateStrokeHint;
+  });
 
   function holeNumbers(){
-    if(chosenHoles.mode==='back') return [10,11,12,13,14,15,16,17,18];
-    if(chosenHoles.mode==='front') return [1,2,3,4,5,6,7,8,9];
+    if(holesMode==='back') return [10,11,12,13,14,15,16,17,18];
+    if(holesMode==='front') return [1,2,3,4,5,6,7,8,9];
     var a=[]; for(var i=1;i<=18;i++)a.push(i); return a;
   }
+  function defaultSI(h){ return courseMode==='shaw' ? SHAW[h] : h; }
+
+  function getAllow(){ var v=parseFloat(document.getElementById('allowance').value); return (isNaN(v)||v<=0)?100:v; }
 
   function buildSIGrid(){
     var g=document.getElementById('siGrid'); g.innerHTML='';
     holeNumbers().forEach(function(h){
       var cell=document.createElement('div'); cell.className='si-cell';
-      cell.innerHTML='<div class="h">Hole '+h+'</div><input type="number" inputmode="numeric" id="si_'+h+'" value="'+h+'">';
+      cell.innerHTML='<div class="h">Hole '+h+'</div><input class="si-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="si_'+h+'" value="'+defaultSI(h)+'">';
       g.appendChild(cell);
     });
+    wireSI();
+    validateSI();
     updateStrokeHint();
   }
 
-  function updateStrokeHint(){
-    var a=parseFloat(document.getElementById('hcpA').value);
-    var b=parseFloat(document.getElementById('hcpB').value);
-    var hint=document.getElementById('strokehint');
-    if(isNaN(a)||isNaN(b)){ hint.classList.remove('show'); return; }
-    var diff=Math.round(Math.abs(a-b));
-    if(diff===0){ hint.textContent='Level match — no strokes given.'; }
-    else{
-      var lower = a<b ? (document.getElementById('nameA').value||'Player A') : (document.getElementById('nameB').value||'Player B');
-      var higher = a<b ? (document.getElementById('nameB').value||'Player B') : (document.getElementById('nameA').value||'Player A');
-      hint.textContent = higher+' gets '+diff+' stroke'+(diff>1?'s':'')+' (off '+lower+'), on the '+diff+' hardest holes by stroke index.';
+  // auto-advance + select-all so you can read straight down the card
+  function wireSI(){
+    var inputs = Array.prototype.slice.call(document.querySelectorAll(".si-input"));
+    function advance(i){
+      if(inputs[i+1]) inputs[i+1].focus();
+      else inputs[i].blur();
+      validateSI();
     }
-    hint.classList.add('show');
+    inputs.forEach(function(el, i){
+      el.onfocus = function(){ setTimeout(function(){ try{ el.select(); }catch(e){} }, 0); };
+      el.oninput = function(){
+        clearTimeout(el._t);
+        var v = el.value.replace(/[^0-9]/g, "").slice(0,2);
+        el.value = v;
+        validateSI();
+        if(v.length === 0) return;
+        var n = parseInt(v, 10);
+        if(v.length === 2){
+          if(n < 1 || n > 18){ el.value = v.charAt(1); }
+          advance(i); return;
+        }
+        if(n >= 2) advance(i);
+        else el._t = setTimeout(function(){ advance(i); }, 900);
+      };
+      el.onblur = function(){ clearTimeout(el._t); validateSI(); };
+    });
+  }
+
+  function validateSI(){
+    var inputs = Array.prototype.slice.call(document.querySelectorAll(".si-input"));
+    var st = document.getElementById("siStatus");
+    if(!inputs.length || !st) return;
+    var counts = {}, blanks = 0;
+    inputs.forEach(function(el){
+      var n = parseInt(el.value, 10);
+      el.classList.remove("bad");
+      if(isNaN(n) || n < 1 || n > 18){ blanks++; el.classList.add("bad"); }
+      else counts[n] = (counts[n] || 0) + 1;
+    });
+    var dupes = [];
+    inputs.forEach(function(el){
+      var n = parseInt(el.value, 10);
+      if(counts[n] > 1){ el.classList.add("bad"); if(dupes.indexOf(n) < 0) dupes.push(n); }
+    });
+    st.className = "si-status";
+    if(blanks){ st.classList.add("warn"); st.textContent = blanks + " hole" + (blanks>1?"s":"") + " still to fill in."; }
+    else if(dupes.length){ st.classList.add("warn"); st.textContent = "Repeated index: " + dupes.sort(function(a,b){return a-b;}).join(", ") + "."; }
+    else { st.classList.add("ok"); st.textContent = "All 18 stroke indexes look right."; }
+  }
+
+  function currentSI(){
+    var si={};
+    holeNumbers().forEach(function(h){
+      var el=document.getElementById('si_'+h);
+      var v=el?parseInt(el.value):defaultSI(h);
+      si[h]=isNaN(v)?defaultSI(h):v;
+    });
+    return si;
+  }
+
+  // allocate n strokes across holes by stroke index -> {hole:count}
+  function allocate(n, si, holes){
+    var ranks={};
+    for(var k=1;k<=n;k++){ var r=((k-1)%18)+1; ranks[r]=(ranks[r]||0)+1; }
+    var out={}; holes.forEach(function(h){ out[h]=ranks[si[h]]||0; });
+    return out;
+  }
+
+  function updateStrokeHint(){
+    var hint=document.getElementById('strokehint');
+    if(fmt==='singles'){
+      var a=parseFloat(document.getElementById('hcpA').value);
+      var b=parseFloat(document.getElementById('hcpB').value);
+      if(isNaN(a)||isNaN(b)){ hint.classList.remove('show'); return; }
+      var allow=getAllow();
+      var diff=Math.abs(Math.round(a*allow/100)-Math.round(b*allow/100));
+      if(diff===0){ hint.textContent='Level match — no shots given.'; }
+      else{
+        var higher = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
+        hint.textContent = higher+' gets '+diff+' shot'+(diff>1?'s':'')+(allow!=100?' ('+allow+'% allowance)':'')+', on the '+diff+' hardest holes by stroke index.';
+      }
+      hint.classList.add('show');
+    } else {
+      var mine=parseFloat(document.getElementById('fbMyHcp').value);
+      if(isNaN(mine)){ hint.classList.remove('show'); return; }
+      var allow=getAllow();
+      var all=[Math.round(mine*allow/100)];
+      ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) all.push(Math.round(v*allow/100)); });
+      var base=Math.min.apply(null,all);
+      var myDiff=Math.max(0, Math.round(mine*allow/100)-base);
+      if(myDiff<=0){ hint.textContent='You are the lowest handicap — you play off scratch, no shots.'; }
+      else { hint.textContent='You get '+myDiff+' shot'+(myDiff>1?'s':'')+(allow!=100?' ('+allow+'% allowance)':'')+' (off the lowest handicap, '+base+'), on the '+myDiff+' hardest holes.'; }
+      hint.classList.add('show');
+    }
   }
 
   buildSIGrid();
@@ -242,40 +411,57 @@
   // ---- Start ----
   function startMatch(){
     var holes=holeNumbers();
-    var si={};
-    holes.forEach(function(h){ var v=parseInt(document.getElementById('si_'+h).value); si[h]=isNaN(v)?h:v; });
-    var a=parseFloat(document.getElementById('hcpA').value); if(isNaN(a))a=0;
-    var b=parseFloat(document.getElementById('hcpB').value); if(isNaN(b))b=0;
-    var diff=Math.round(Math.abs(a-b));
-    var receiver = a<b ? 'B' : (b<a ? 'A' : null); // higher handicap receives
+    var si=currentSI();
+    var base={ holes:holes, si:si, results:[] };
 
-    // which SI ranks receive a stroke (1..diff, wrapping past 18)
-    var strokeRanks={};
-    for(var k=1;k<=diff;k++){ var rank=((k-1)%18)+1; strokeRanks[rank]=(strokeRanks[rank]||0)+1; }
-
-    // map each hole to strokes received by the receiver
-    var holeStrokes={};
-    holes.forEach(function(h){ holeStrokes[h]=receiver?(strokeRanks[si[h]]||0):0; });
-
-    S={
-      nameA:document.getElementById('nameA').value||'Player A',
-      nameB:document.getElementById('nameB').value||'Player B',
-      hcpA:a, hcpB:b, holes:holes, si:si,
-      receiver:receiver, holeStrokes:holeStrokes,
-      results:[]  // 'A','B','H' per hole played
-    };
+    if(fmt==='singles'){
+      var a=parseFloat(document.getElementById('hcpA').value); if(isNaN(a))a=0;
+      var b=parseFloat(document.getElementById('hcpB').value); if(isNaN(b))b=0;
+      var allow=getAllow();
+      var aA=Math.round(a*allow/100), bA=Math.round(b*allow/100);
+      var diff=Math.abs(aA-bA);
+      var receiverName = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
+      var badge = diff>0 ? allocate(diff, si, holes) : {};
+      S=Object.assign(base,{
+        format:'singles',
+        leftLabel:(document.getElementById('nameA').value||'You'),
+        rightLabel:(document.getElementById('nameB').value||'Opponent'),
+        hcpA:Math.round(a), hcpB:Math.round(b),
+        badgeStrokes:badge, badgeWho:(diff>0?receiverName:null)
+      });
+    } else {
+      var mine=parseFloat(document.getElementById('fbMyHcp').value); if(isNaN(mine))mine=0;
+      var allow=getAllow();
+      var all=[Math.round(mine*allow/100)];
+      ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) all.push(Math.round(v*allow/100)); });
+      var basehcp=Math.min.apply(null,all);
+      var myDiff=Math.max(0, Math.round(mine*allow/100)-basehcp);
+      var badge = myDiff>0 ? allocate(myDiff, si, holes) : {};
+      S=Object.assign(base,{
+        format:'fourball',
+        leftLabel:(document.getElementById('fbUs').value||'Us'),
+        rightLabel:(document.getElementById('fbThem').value||'Them'),
+        myHcp:mine, baseHcp:basehcp,
+        badgeStrokes:badge, badgeWho:'You'
+      });
+    }
     save(); showPlay();
   }
 
   function showPlay(){
     document.getElementById('setup').style.display='none';
     document.getElementById('play').style.display='flex';
-    document.getElementById('pAName').textContent=S.nameA;
-    document.getElementById('pBName').textContent=S.nameB;
-    document.getElementById('pAhcp').textContent=S.hcpA?('('+S.hcpA+')'):'';
-    document.getElementById('pBhcp').textContent=S.hcpB?('('+S.hcpB+')'):'';
-    document.getElementById('btnA').textContent=S.nameA;
-    document.getElementById('btnB').textContent=S.nameB;
+    document.getElementById('pAName').textContent=S.leftLabel;
+    document.getElementById('pBName').textContent=S.rightLabel;
+    if(S.format==='singles'){
+      document.getElementById('pAhcp').textContent=S.hcpA?('('+S.hcpA+')'):'';
+      document.getElementById('pBhcp').textContent=S.hcpB?('('+S.hcpB+')'):'';
+    } else {
+      document.getElementById('pAhcp').textContent='';
+      document.getElementById('pBhcp').textContent='';
+    }
+    document.getElementById('btnA').textContent=S.leftLabel;
+    document.getElementById('btnB').textContent=S.rightLabel;
     render();
   }
 
@@ -301,39 +487,34 @@
   }
   function matchIsOver(){ return matchStatus().over; }
 
-  function statusText(lead){
-    if(lead===0) return 'All Square';
-    return Math.abs(lead)+' UP';
-  }
-
   function render(){
     var st=matchStatus();
     var main=document.getElementById('statusMain');
     var sub=document.getElementById('statusSub');
-    if(st.lead===0){ main.textContent='All Square'; }
-    else { var leader = st.lead>0?S.nameA:S.nameB; main.textContent=Math.abs(st.lead)+' UP'; sub.innerHTML='<b>'+leader+'</b> leads'; }
-    if(st.lead===0) sub.innerHTML = st.played? 'through '+st.played : 'ready to start';
-    else sub.innerHTML += ' &middot; through '+st.played;
+    if(st.lead===0){ main.textContent='All Square'; main.style.color='#fff'; sub.innerHTML = st.played? 'through '+st.played : 'ready to start'; }
+    else { var leader = st.lead>0?S.leftLabel:S.rightLabel; main.textContent=Math.abs(st.lead)+' UP'; main.style.color = st.lead>0?'var(--meLight)':'var(--oppLight)'; sub.innerHTML='<b>'+leader+'</b> leads &middot; through '+st.played; }
 
-    // dormie bar
     var db=document.getElementById('dormieBar');
-    if(st.dormie){ var ldr=st.lead>0?S.nameA:S.nameB; db.style.display='block'; db.textContent='DORMIE — '+ldr+' '+Math.abs(st.lead)+' up with '+st.remaining+' to play'; }
+    if(st.dormie){ var ldr=st.lead>0?S.leftLabel:S.rightLabel; db.style.display='block'; db.textContent='DORMIE — '+ldr+' '+Math.abs(st.lead)+' up with '+st.remaining+' to play'; }
     else db.style.display='none';
 
-    // current hole
-    var idx=st.played; // next hole index
+    var idx=st.played;
     if(idx>=S.holes.length){ renderStrip(idx); return; }
     var h=S.holes[idx];
     document.getElementById('holeNum').textContent='Hole '+h;
     document.getElementById('holeThru').textContent=(idx+1)+' of '+S.holes.length;
 
     var sb=document.getElementById('strokeBadge');
-    var strokes=S.holeStrokes[h]||0;
+    var strokes=(S.badgeStrokes&&S.badgeStrokes[h])||0;
     if(strokes>0){
-      var who = S.receiver==='A'?S.nameA:S.nameB;
       sb.className='stroke-badge';
-      sb.textContent='★ '+who+' gets '+(strokes>1?strokes+' strokes':'a stroke')+' here (SI '+S.si[h]+')';
-    } else { sb.className='stroke-badge none'; sb.textContent='No strokes on this hole (SI '+S.si[h]+')'; }
+      if(S.badgeWho==='You') sb.textContent='★ You get '+(strokes>1?strokes+' shots':'a shot')+' here — SI '+S.si[h];
+      else sb.textContent='★ '+S.badgeWho+' gets '+(strokes>1?strokes+' shots':'a shot')+' here — SI '+S.si[h];
+    } else {
+      sb.className='stroke-badge none';
+      if(S.badgeWho==='You') sb.textContent='No shot for you here — SI '+S.si[h];
+      else sb.textContent='No shots on this hole — SI '+S.si[h];
+    }
 
     renderStrip(idx);
   }
@@ -355,23 +536,26 @@
   function showResult(st){
     var r=document.getElementById('result');
     var lead=Math.abs(st.lead);
-    var winner = st.lead>0?S.nameA : (st.lead<0?S.nameB:null);
+    var winner = st.lead>0?S.leftLabel : (st.lead<0?S.rightLabel:null);
+    var scoreEl=document.getElementById('resScore');
     if(winner===null){
       document.getElementById('resWinner').textContent='Match halved';
-      document.getElementById('resScore').textContent='A/S';
+      scoreEl.textContent='A/S'; scoreEl.style.color='#fff';
     } else {
-      document.getElementById('resWinner').textContent=winner+' wins';
-      if(st.remaining>0) document.getElementById('resScore').textContent=lead+' & '+st.remaining;
-      else document.getElementById('resScore').textContent=lead+' up';
+      document.getElementById('resWinner').textContent=winner+' win'+(S.format==='fourball'?'':'s');
+      if(st.remaining>0) scoreEl.textContent=lead+' & '+st.remaining;
+      else scoreEl.textContent=lead+' up';
+      scoreEl.style.color = st.lead>0?'var(--meLight)':'var(--oppLight)';
     }
     r.style.display='flex';
   }
 
   function shareResult(){
     var st=matchStatus(); var lead=Math.abs(st.lead);
-    var winner = st.lead>0?S.nameA : (st.lead<0?S.nameB:null);
+    var winner = st.lead>0?S.leftLabel : (st.lead<0?S.rightLabel:null);
     var score = winner? (st.remaining>0? lead+' & '+st.remaining : lead+' up') : 'A/S (halved)';
-    var text = winner ? (winner+' beat '+(winner===S.nameA?S.nameB:S.nameA)+' '+score) : ('Match halved between '+S.nameA+' and '+S.nameB);
+    var loser = winner===S.leftLabel?S.rightLabel:S.leftLabel;
+    var text = winner ? (winner+' beat '+loser+' '+score) : ('Match halved between '+S.leftLabel+' and '+S.rightLabel);
     if(navigator.share){ navigator.share({title:'Match result', text:text}).catch(function(){}); }
     else { alert(text); }
   }
