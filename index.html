@@ -158,7 +158,7 @@
       <input type="checkbox" id="localRule" checked>
     </div>
 
-    <div class="field">
+    <div class="field" id="allowField" style="display:none;">
       <label>Handicap allowance (%)</label>
       <input type="number" id="allowance" inputmode="numeric" pattern="[0-9]*" value="75">
       <div class="allowhint" id="allowHint" style="font-size:12px; color:var(--muted); margin-top:6px;">Local rule: 75% of the difference, handicaps capped at 20.</div>
@@ -318,6 +318,8 @@
     var on=localRuleOn();
     var allowEl=document.getElementById('allowance');
     var hintEl=document.getElementById('allowHint');
+    var fieldEl=document.getElementById('allowField');
+    if(fieldEl) fieldEl.style.display = on ? 'none' : 'block';
     if(on){
       allowEl.value=75; allowEl.disabled=true; allowEl.style.opacity=.6;
       hintEl.textContent='Local rule: 75% of the difference, handicaps capped at 20.';
@@ -442,8 +444,8 @@
       var capNote = (localRuleOn() && (a>20 || b>20)) ? ', handicaps capped at 20' : '';
       if(diff===0){ hint.textContent='Level match — no shots given.'; }
       else{
-        var higher = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
-        hint.textContent = higher+' gets '+diff+' shot'+(diff>1?'s':'')+' ('+allow+'% of the difference'+capNote+(holeNumbers().length<18?', halved for 9 holes':'')+'), on the '+diff+' hardest holes by stroke index.';
+        var higher = a>b ? 'You' : (document.getElementById('nameB').value||'Opponent');
+        hint.textContent = (a>b?'You get ':higher+' gets ')+diff+' shot'+(diff>1?'s':'')+' ('+allow+'% of the difference'+capNote+(holeNumbers().length<18?', halved for 9 holes':'')+'), on the '+diff+' hardest holes by stroke index.';
       }
       hint.classList.add('show');
     } else {
@@ -463,6 +465,7 @@
   }
 
   buildSIGrid();
+  applyLocalRule();
 
   // ---- Start ----
   function startMatch(){
@@ -474,7 +477,8 @@
       var a=parseFloat(document.getElementById('hcpA').value); if(isNaN(a))a=0;
       var b=parseFloat(document.getElementById('hcpB').value); if(isNaN(b))b=0;
       var diff=shotsForRound(a,b,holes.length);
-      var receiverName = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
+      // left side is always the user, so their shots read as "You"
+      var receiverName = a>b ? 'You' : (document.getElementById('nameB').value||'Opponent');
       var badge = diff>0 ? allocate(diff, si, holes) : {};
       S=Object.assign(base,{
         format:'singles',
