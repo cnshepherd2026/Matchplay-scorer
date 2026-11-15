@@ -122,6 +122,12 @@
   .appname{font-size:22px; font-weight:700; color:var(--navy); letter-spacing:.01em;}
   .reslogo{width:66px; height:66px; margin-bottom:18px; border-radius:15px; filter:drop-shadow(0 5px 14px rgba(0,0,0,.35));}
   .statuslogo{width:26px; height:26px; margin:0 auto 8px; display:block; border-radius:6px; opacity:.97;}
+  .verline{text-align:center; font-size:12px; color:var(--muted); padding:4px 0 10px;}
+  .kbbar{position:fixed; left:0; right:0; bottom:0; display:none; justify-content:flex-end;
+         background:#F7F8FA; border-top:1px solid var(--line); padding:6px 10px; z-index:60;}
+  .kbbar.show{display:flex;}
+  .kbbar button{background:var(--teal); color:#fff; border:none; border-radius:8px;
+         padding:9px 20px; font-size:16px; font-weight:700;}
 </style>
 </head>
 <body>
@@ -202,6 +208,7 @@
     <div class="si-status" id="siStatus"></div>
 
     <button class="btn-primary" onclick="startMatch()">Start match</button>
+    <div class="verline" id="verSetup"></div>
   </div>
 
   <!-- PLAY -->
@@ -234,6 +241,7 @@
     <div class="actions">
       <button class="btn-undo" onclick="undo()">↩ Undo last hole</button>
       <button class="btn-reset" onclick="resetMatch()">New match</button>
+      <div class="verline" id="verPlay"></div>
     </div>
   </div>
 
@@ -244,12 +252,17 @@
     <div class="winner" id="resWinner"></div>
     <div class="score" id="resScore"></div>
     <button onclick="shareResult()">Share result</button>
+    <button class="secondary" onclick="undo()">↩ Undo last hole</button>
     <button class="secondary" onclick="resetMatch()">New match</button>
   </div>
 
 </div>
 
+<div class="kbbar" id="kbBar"><button type="button" id="kbDone">Done</button></div>
+
 <script>
+  var APP_VERSION = 'v1.0';
+
   // Shaw Hill Golf Club — stroke index by hole (white tees)
   var SHAW = {1:15,2:7,3:3,4:9,5:11,6:17,7:13,8:1,9:5,10:18,11:2,12:14,13:8,14:10,15:4,16:16,17:12,18:6};
 
@@ -401,11 +414,21 @@
   }
 
   // allocate n strokes across holes by stroke index -> {hole:count}
+  // Spread n shots over the holes actually being played, hardest first by
+  // stroke index. Wraps round for a second shot when n exceeds the hole count.
   function allocate(n, si, holes){
-    var ranks={};
-    for(var k=1;k<=n;k++){ var r=((k-1)%18)+1; ranks[r]=(ranks[r]||0)+1; }
-    var out={}; holes.forEach(function(h){ out[h]=ranks[si[h]]||0; });
+    var out={}; holes.forEach(function(h){ out[h]=0; });
+    if(n<=0 || !holes.length) return out;
+    var order = holes.slice().sort(function(a,b){ return si[a]-si[b]; });
+    for(var k=0;k<n;k++){ out[order[k % order.length]]++; }
     return out;
+  }
+
+  // A 9-hole match gives half the shots of a full round.
+  function shotsForRound(hi, lo, holeCount){
+    var raw = Math.abs(capH(hi)-capH(lo)) * getAllow()/100;
+    if(holeCount < 18) raw = raw/2;
+    return Math.round(raw);
   }
 
   function updateStrokeHint(){
@@ -415,12 +438,12 @@
       var b=parseFloat(document.getElementById('hcpB').value);
       if(isNaN(a)||isNaN(b)){ hint.classList.remove('show'); return; }
       var allow=getAllow();
-      var diff=shotsFromDiff(a,b);
+      var diff=shotsForRound(a,b,holeNumbers().length);
       var capNote = (localRuleOn() && (a>20 || b>20)) ? ', handicaps capped at 20' : '';
       if(diff===0){ hint.textContent='Level match — no shots given.'; }
       else{
         var higher = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
-        hint.textContent = higher+' gets '+diff+' shot'+(diff>1?'s':'')+' ('+allow+'% of the difference'+capNote+'), on the '+diff+' hardest holes by stroke index.';
+        hint.textContent = higher+' gets '+diff+' shot'+(diff>1?'s':'')+' ('+allow+'% of the difference'+capNote+(holeNumbers().length<18?', halved for 9 holes':'')+'), on the '+diff+' hardest holes by stroke index.';
       }
       hint.classList.add('show');
     } else {
@@ -431,7 +454,7 @@
       ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) raw.push(v); });
       var capped=raw.map(function(v){ return capH(v); });
       var base=Math.min.apply(null,capped);
-      var myDiff=shotsFromDiff(mine, base);
+      var myDiff=shotsForRound(mine, base, holeNumbers().length);
       var capNote = (localRuleOn() && raw.some(function(v){return v>20;})) ? ', handicaps capped at 20' : '';
       if(capH(mine)<=base){ hint.textContent='You are the lowest handicap — you play off scratch, no shots.'; }
       else { hint.textContent='You get '+myDiff+' shot'+(myDiff>1?'s':'')+' ('+allow+'% of the difference off the lowest handicap, '+base+capNote+'), on the '+myDiff+' hardest holes.'; }
@@ -450,7 +473,7 @@
     if(fmt==='singles'){
       var a=parseFloat(document.getElementById('hcpA').value); if(isNaN(a))a=0;
       var b=parseFloat(document.getElementById('hcpB').value); if(isNaN(b))b=0;
-      var diff=shotsFromDiff(a,b);
+      var diff=shotsForRound(a,b,holes.length);
       var receiverName = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
       var badge = diff>0 ? allocate(diff, si, holes) : {};
       S=Object.assign(base,{
@@ -465,7 +488,7 @@
       var raw=[mine];
       ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) raw.push(v); });
       var basehcp=Math.min.apply(null, raw.map(function(v){ return capH(v); }));
-      var myDiff=(capH(mine)<=basehcp)?0:shotsFromDiff(mine, basehcp);
+      var myDiff=(capH(mine)<=basehcp)?0:shotsForRound(mine, basehcp, holes.length);
       var badge = myDiff>0 ? allocate(myDiff, si, holes) : {};
       S=Object.assign(base,{
         format:'fourball',
@@ -606,6 +629,9 @@
   }
 
   function resetMatch(){
+    if(S && S.results && S.results.length && !matchIsOver()){
+      if(!confirm('Discard this match? '+S.results.length+' hole'+(S.results.length>1?'s':'')+' recorded.')) return;
+    }
     localStorage.removeItem('mp_state');
     S=null;
     document.getElementById('result').style.display='none';
@@ -614,6 +640,46 @@
   }
 
   // ---- Persistence ----
+  // ---- Number keypad: give it a Done button, and let a tap elsewhere close it ----
+  (function(){
+    var kb=document.getElementById('kbBar');
+    var done=document.getElementById('kbDone');
+    if(!kb||!done) return;
+    function isNumField(el){ return !!(el && el.tagName==='INPUT' && el.getAttribute('inputmode')); }
+    function place(){
+      if(!window.visualViewport) return;
+      var vv=window.visualViewport;
+      kb.style.bottom = Math.max(0, window.innerHeight-(vv.height+vv.offsetTop))+'px';
+    }
+    document.addEventListener('focusin', function(e){
+      if(isNumField(e.target)){ kb.classList.add('show'); place(); }
+    });
+    document.addEventListener('focusout', function(){
+      setTimeout(function(){ if(!isNumField(document.activeElement)) kb.classList.remove('show'); }, 60);
+    });
+    done.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    done.addEventListener('click', function(){
+      if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      kb.classList.remove('show');
+    });
+    document.addEventListener('touchstart', function(e){
+      var a=document.activeElement;
+      if(isNumField(a) && !isNumField(e.target) && !kb.contains(e.target)) a.blur();
+    }, {passive:true});
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', place);
+      window.visualViewport.addEventListener('scroll', place);
+    }
+  })();
+
+  // ---- Version stamp ----
+  (function(){
+    ['verSetup','verPlay'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.textContent='Match Play Scorer '+APP_VERSION;
+    });
+  })();
+
   function save(){ try{ localStorage.setItem('mp_state', JSON.stringify(S)); }catch(e){} }
   function load(){
     try{ var raw=localStorage.getItem('mp_state'); if(raw){ S=JSON.parse(raw); showPlay();
