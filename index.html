@@ -61,6 +61,10 @@
   .si-status{font-size:13px; font-weight:600; margin:-6px 0 16px; display:none;}
   .si-status.warn{display:block; color:#B42318;}
   .si-status.ok{display:block; color:#1E9E63;}
+  .localrule{display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:16px;}
+  .localrule label{font-size:14px; color:var(--text); font-weight:600; margin:0;}
+  .localrule label span{font-size:12px; color:var(--muted); font-weight:500;}
+  .localrule input[type=checkbox]{width:28px; height:28px; accent-color:var(--teal); flex:0 0 auto;}
   .strokehint{background:#FBF5E6; border:1px solid #EBD9A8; color:#8a6d1f; border-radius:10px; padding:12px 14px; font-size:14px; margin-bottom:16px; display:none;}
   .strokehint.show{display:block;}
   .btn-primary{width:100%; padding:17px; font-size:18px; font-weight:600; background:var(--teal); color:#fff; border:none; border-radius:12px;}
@@ -143,10 +147,15 @@
       <button data-c="custom">Custom</button>
     </div>
 
+    <div class="localrule" id="localRuleRow">
+      <label for="localRule"><b>Shaw Hill local rule</b><br><span>Max handicap 20, 75% of the difference</span></label>
+      <input type="checkbox" id="localRule" checked>
+    </div>
+
     <div class="field">
       <label>Handicap allowance (%)</label>
-      <input type="number" id="allowance" inputmode="numeric" pattern="[0-9]*" value="100">
-      <div class="allowhint" id="allowHint" style="font-size:12px; color:var(--muted); margin-top:6px;">Singles normally uses 100% (full difference).</div>
+      <input type="number" id="allowance" inputmode="numeric" pattern="[0-9]*" value="75">
+      <div class="allowhint" id="allowHint" style="font-size:12px; color:var(--muted); margin-top:6px;">Local rule: 75% of the difference, handicaps capped at 20.</div>
     </div>
 
     <!-- Singles inputs -->
@@ -256,8 +265,7 @@
       b.classList.add('on'); fmt=b.getAttribute('data-f');
       document.getElementById('singlesBlock').style.display = fmt==='singles'?'block':'none';
       document.getElementById('fourballBlock').style.display = fmt==='fourball'?'block':'none';
-      document.getElementById('allowance').value = fmt==='fourball'?90:100;
-      document.getElementById('allowHint').textContent = fmt==='fourball'?'Fourball normally uses 90% of each handicap.':'Singles normally uses 100% (full difference).';
+      applyLocalRule();
       updateStrokeHint();
     };
   });
@@ -266,6 +274,8 @@
       document.querySelectorAll('#courseSeg button').forEach(x=>x.classList.remove('on'));
       b.classList.add('on'); courseMode=b.getAttribute('data-c');
       document.getElementById('siToggleLabel').textContent = courseMode==='shaw'?'Stroke index (Shaw Hill)':'Stroke index (custom)';
+      document.getElementById('localRule').checked = (courseMode==='shaw');
+      applyLocalRule();
       buildSIGrid();
     };
   });
@@ -289,6 +299,22 @@
     document.getElementById(id).oninput=updateStrokeHint;
   });
 
+  document.getElementById('localRule').onchange=function(){ applyLocalRule(); updateStrokeHint(); };
+
+  function applyLocalRule(){
+    var on=localRuleOn();
+    var allowEl=document.getElementById('allowance');
+    var hintEl=document.getElementById('allowHint');
+    if(on){
+      allowEl.value=75; allowEl.disabled=true; allowEl.style.opacity=.6;
+      hintEl.textContent='Local rule: 75% of the difference, handicaps capped at 20.';
+    } else {
+      allowEl.disabled=false; allowEl.style.opacity=1;
+      allowEl.value = (fmt==='fourball')?90:100;
+      hintEl.textContent = (fmt==='fourball')?'Fourball normally uses 90% of the difference.':'Singles normally uses 100% (full difference).';
+    }
+  }
+
   function holeNumbers(){
     if(holesMode==='back') return [10,11,12,13,14,15,16,17,18];
     if(holesMode==='front') return [1,2,3,4,5,6,7,8,9];
@@ -297,6 +323,10 @@
   function defaultSI(h){ return courseMode==='shaw' ? SHAW[h] : h; }
 
   function getAllow(){ var v=parseFloat(document.getElementById('allowance').value); return (isNaN(v)||v<=0)?100:v; }
+  function localRuleOn(){ var el=document.getElementById('localRule'); return !!(el && el.checked); }
+  function capH(v){ return localRuleOn() ? Math.min(v, 20) : v; }
+  // shots = allowance% of the difference between (capped) handicaps
+  function shotsFromDiff(hi, lo){ return Math.round(Math.abs(capH(hi)-capH(lo)) * getAllow()/100); }
 
   function buildSIGrid(){
     var g=document.getElementById('siGrid'); g.innerHTML='';
@@ -385,23 +415,26 @@
       var b=parseFloat(document.getElementById('hcpB').value);
       if(isNaN(a)||isNaN(b)){ hint.classList.remove('show'); return; }
       var allow=getAllow();
-      var diff=Math.abs(Math.round(a*allow/100)-Math.round(b*allow/100));
+      var diff=shotsFromDiff(a,b);
+      var capNote = (localRuleOn() && (a>20 || b>20)) ? ', handicaps capped at 20' : '';
       if(diff===0){ hint.textContent='Level match — no shots given.'; }
       else{
         var higher = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
-        hint.textContent = higher+' gets '+diff+' shot'+(diff>1?'s':'')+(allow!=100?' ('+allow+'% allowance)':'')+', on the '+diff+' hardest holes by stroke index.';
+        hint.textContent = higher+' gets '+diff+' shot'+(diff>1?'s':'')+' ('+allow+'% of the difference'+capNote+'), on the '+diff+' hardest holes by stroke index.';
       }
       hint.classList.add('show');
     } else {
       var mine=parseFloat(document.getElementById('fbMyHcp').value);
       if(isNaN(mine)){ hint.classList.remove('show'); return; }
       var allow=getAllow();
-      var all=[Math.round(mine*allow/100)];
-      ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) all.push(Math.round(v*allow/100)); });
-      var base=Math.min.apply(null,all);
-      var myDiff=Math.max(0, Math.round(mine*allow/100)-base);
-      if(myDiff<=0){ hint.textContent='You are the lowest handicap — you play off scratch, no shots.'; }
-      else { hint.textContent='You get '+myDiff+' shot'+(myDiff>1?'s':'')+(allow!=100?' ('+allow+'% allowance)':'')+' (off the lowest handicap, '+base+'), on the '+myDiff+' hardest holes.'; }
+      var raw=[mine];
+      ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) raw.push(v); });
+      var capped=raw.map(function(v){ return capH(v); });
+      var base=Math.min.apply(null,capped);
+      var myDiff=shotsFromDiff(mine, base);
+      var capNote = (localRuleOn() && raw.some(function(v){return v>20;})) ? ', handicaps capped at 20' : '';
+      if(capH(mine)<=base){ hint.textContent='You are the lowest handicap — you play off scratch, no shots.'; }
+      else { hint.textContent='You get '+myDiff+' shot'+(myDiff>1?'s':'')+' ('+allow+'% of the difference off the lowest handicap, '+base+capNote+'), on the '+myDiff+' hardest holes.'; }
       hint.classList.add('show');
     }
   }
@@ -417,9 +450,7 @@
     if(fmt==='singles'){
       var a=parseFloat(document.getElementById('hcpA').value); if(isNaN(a))a=0;
       var b=parseFloat(document.getElementById('hcpB').value); if(isNaN(b))b=0;
-      var allow=getAllow();
-      var aA=Math.round(a*allow/100), bA=Math.round(b*allow/100);
-      var diff=Math.abs(aA-bA);
+      var diff=shotsFromDiff(a,b);
       var receiverName = a>b ? (document.getElementById('nameA').value||'You') : (document.getElementById('nameB').value||'Opponent');
       var badge = diff>0 ? allocate(diff, si, holes) : {};
       S=Object.assign(base,{
@@ -431,11 +462,10 @@
       });
     } else {
       var mine=parseFloat(document.getElementById('fbMyHcp').value); if(isNaN(mine))mine=0;
-      var allow=getAllow();
-      var all=[Math.round(mine*allow/100)];
-      ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) all.push(Math.round(v*allow/100)); });
-      var basehcp=Math.min.apply(null,all);
-      var myDiff=Math.max(0, Math.round(mine*allow/100)-basehcp);
+      var raw=[mine];
+      ['other0','other1','other2'].forEach(function(id){ var v=parseFloat(document.getElementById(id).value); if(!isNaN(v)) raw.push(v); });
+      var basehcp=Math.min.apply(null, raw.map(function(v){ return capH(v); }));
+      var myDiff=(capH(mine)<=basehcp)?0:shotsFromDiff(mine, basehcp);
       var badge = myDiff>0 ? allocate(myDiff, si, holes) : {};
       S=Object.assign(base,{
         format:'fourball',
@@ -491,11 +521,26 @@
     var st=matchStatus();
     var main=document.getElementById('statusMain');
     var sub=document.getElementById('statusSub');
-    if(st.lead===0){ main.textContent='All Square'; main.style.color='#fff'; sub.innerHTML = st.played? 'through '+st.played : 'ready to start'; }
-    else { var leader = st.lead>0?S.leftLabel:S.rightLabel; main.textContent=Math.abs(st.lead)+' UP'; main.style.color = st.lead>0?'var(--meLight)':'var(--oppLight)'; sub.innerHTML='<b>'+leader+'</b> leads &middot; through '+st.played; }
+    if(st.lead===0){
+      main.textContent='All Square'; main.style.color='#fff';
+      sub.innerHTML = st.played? 'through '+st.played : 'ready to start';
+    } else {
+      var n=Math.abs(st.lead);
+      var up = st.lead>0;                       // left side is always "you"/"us"
+      main.textContent = n+(up?' UP':' DOWN');
+      main.style.color = up?'var(--meLight)':'var(--oppLight)';
+      var other = up?S.rightLabel:S.leftLabel;
+      sub.innerHTML = (up?'up on <b>':'down to <b>')+other+'</b> &middot; through '+st.played;
+    }
 
     var db=document.getElementById('dormieBar');
-    if(st.dormie){ var ldr=st.lead>0?S.leftLabel:S.rightLabel; db.style.display='block'; db.textContent='DORMIE — '+ldr+' '+Math.abs(st.lead)+' up with '+st.remaining+' to play'; }
+    if(st.dormie){
+      var n2=Math.abs(st.lead), up2=st.lead>0;
+      db.style.display='block';
+      db.style.background = up2?'var(--me)':'var(--opp)';
+      db.style.color='#fff';
+      db.textContent='DORMIE — '+n2+(up2?' up':' down')+' with '+st.remaining+' to play';
+    }
     else db.style.display='none';
 
     var idx=st.played;
@@ -542,7 +587,7 @@
       document.getElementById('resWinner').textContent='Match halved';
       scoreEl.textContent='A/S'; scoreEl.style.color='#fff';
     } else {
-      document.getElementById('resWinner').textContent=winner+' win'+(S.format==='fourball'?'':'s');
+      document.getElementById('resWinner').textContent = (st.lead>0?'You win':winner+' win'+(S.format==='fourball'?'':'s'));
       if(st.remaining>0) scoreEl.textContent=lead+' & '+st.remaining;
       else scoreEl.textContent=lead+' up';
       scoreEl.style.color = st.lead>0?'var(--meLight)':'var(--oppLight)';
